@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Test Bluetooth LED</title>
+  <title>Bluetooth LED - V3</title>
   <style>
     body {
       margin: 0;
@@ -15,10 +15,16 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 30px;
+      gap: 25px;
+      text-align: center;
     }
-    h1 { font-size: 28px; text-align: center; }
-    #status { font-size: 18px; color: #93c5fd; text-align: center; padding: 0 20px; }
+    .version {
+      background: #facc15;
+      color: #111827;
+      padding: 8px 18px;
+      border-radius: 999px;
+      font-weight: bold;
+    }
     button {
       font-size: 26px;
       padding: 24px 32px;
@@ -28,12 +34,20 @@
       font-weight: bold;
     }
     #connect { background: #2563eb; }
-    .buttons { display: flex; gap: 20px; }
     #on { background: #16a34a; }
     #off { background: #dc2626; }
+    .buttons { display: flex; gap: 20px; }
+    #status {
+      font-size: 17px;
+      color: #93c5fd;
+      max-width: 90%;
+      word-break: break-word;
+    }
   </style>
 </head>
 <body>
+
+  <div class="version">VERSION V3 - TEST BLE HM-10</div>
 
   <h1>Test Bluetooth LED Grove</h1>
 
@@ -54,29 +68,38 @@
 
     async function connectBluetooth() {
       try {
-        document.getElementById("status").textContent = "Recherche des appareils BLE...";
+        statusText("V3 - Vérification Web Bluetooth...");
+
+        if (!navigator.bluetooth) {
+          statusText("ERREUR V3 : Web Bluetooth non disponible dans ce navigateur.");
+          return;
+        }
+
+        statusText("V3 - Recherche BLE en cours...");
 
         const device = await navigator.bluetooth.requestDevice({
           acceptAllDevices: true,
           optionalServices: [SERVICE_UUID]
         });
 
-        document.getElementById("status").textContent = "Connexion à " + (device.name || "appareil BLE") + "...";
+        statusText("V3 - Appareil choisi : " + (device.name || "sans nom"));
 
         const server = await device.gatt.connect();
-        const service = await server.getPrimaryService(SERVICE_UUID);
-        bluetoothCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+        statusText("V3 - GATT connecté");
 
-        document.getElementById("status").textContent = "Connecté à " + (device.name || "BT05");
+        const service = await server.getPrimaryService(SERVICE_UUID);
+        statusText("V3 - Service FFE0 trouvé");
+
+        bluetoothCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+        statusText("V3 - Connecté à FFE1 : prêt");
       } catch (error) {
-        document.getElementById("status").textContent = "Erreur Bluetooth : " + error.message;
-        console.log(error);
+        statusText("ERREUR V3 : " + error.name + " / " + error.message);
       }
     }
 
     async function sendCommand(command) {
       if (!bluetoothCharacteristic) {
-        document.getElementById("status").textContent = "Bluetooth non connecté";
+        statusText("V3 - Bluetooth non connecté");
         return;
       }
 
@@ -84,15 +107,20 @@
 
       try {
         await bluetoothCharacteristic.writeValue(data);
-        document.getElementById("status").textContent = "Commande envoyée : " + command;
-      } catch (e) {
+        statusText("V3 - Commande envoyée : " + command);
+      } catch (error1) {
         try {
           await bluetoothCharacteristic.writeValueWithoutResponse(data);
-          document.getElementById("status").textContent = "Commande envoyée : " + command;
-        } catch (err) {
-          document.getElementById("status").textContent = "Erreur envoi : " + err.message;
+          statusText("V3 - Commande envoyée sans réponse : " + command);
+        } catch (error2) {
+          statusText("ERREUR V3 ENVOI : " + error2.name + " / " + error2.message);
         }
       }
+    }
+
+    function statusText(txt) {
+      document.getElementById("status").textContent = txt;
+      console.log(txt);
     }
 
     document.getElementById("connect").addEventListener("click", connectBluetooth);
