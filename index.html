@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Bluetooth LED</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      background: #111827;
+      color: white;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 30px;
+    }
+
+    h1 {
+      font-size: 28px;
+      text-align: center;
+    }
+
+    #status {
+      font-size: 18px;
+      color: #93c5fd;
+    }
+
+    button {
+      font-size: 28px;
+      padding: 25px 40px;
+      border: none;
+      border-radius: 20px;
+      color: white;
+      font-weight: bold;
+    }
+
+    #connect {
+      background: #2563eb;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 20px;
+    }
+
+    #on {
+      background: #16a34a;
+    }
+
+    #off {
+      background: #dc2626;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Test Bluetooth LED Grove</h1>
+
+  <button id="connect">Connexion Bluetooth</button>
+
+  <div id="status">Non connecté</div>
+
+  <div class="buttons">
+    <button id="on">ALLUMER</button>
+    <button id="off">ÉTEINDRE</button>
+  </div>
+
+  <script>
+    let bluetoothDevice;
+    let bluetoothCharacteristic;
+
+    const SERVICE_UUID = 0xFFE0;
+    const CHARACTERISTIC_UUID = 0xFFE1;
+
+    async function connectBluetooth() {
+      try {
+        document.getElementById("status").textContent = "Recherche Bluetooth...";
+
+        bluetoothDevice = await navigator.bluetooth.requestDevice({
+          filters: [{ namePrefix: "BT05" }],
+          optionalServices: [SERVICE_UUID]
+        });
+
+        document.getElementById("status").textContent = "Connexion à " + bluetoothDevice.name + "...";
+
+        const server = await bluetoothDevice.gatt.connect();
+        const service = await server.getPrimaryService(SERVICE_UUID);
+        bluetoothCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+
+        document.getElementById("status").textContent = "Connecté à " + bluetoothDevice.name;
+      } catch (error) {
+        document.getElementById("status").textContent = "Erreur : " + error;
+      }
+    }
+
+    async function sendCommand(command) {
+      if (!bluetoothCharacteristic) {
+        document.getElementById("status").textContent = "Bluetooth non connecté";
+        return;
+      }
+
+      const encoder = new TextEncoder();
+      await bluetoothCharacteristic.writeValue(encoder.encode(command));
+
+      document.getElementById("status").textContent = "Commande envoyée : " + command;
+    }
+
+    document.getElementById("connect").addEventListener("click", connectBluetooth);
+
+    document.getElementById("on").addEventListener("click", () => {
+      sendCommand("A");
+    });
+
+    document.getElementById("off").addEventListener("click", () => {
+      sendCommand("E");
+    });
+  </script>
+
+</body>
+</html>
