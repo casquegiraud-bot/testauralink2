@@ -17,42 +17,20 @@
       justify-content: center;
       gap: 30px;
     }
-
-    h1 {
-      font-size: 28px;
-      text-align: center;
-    }
-
-    #status {
-      font-size: 18px;
-      color: #93c5fd;
-    }
-
+    h1 { font-size: 28px; text-align: center; }
+    #status { font-size: 18px; color: #93c5fd; text-align: center; padding: 0 20px; }
     button {
-      font-size: 28px;
-      padding: 25px 40px;
+      font-size: 26px;
+      padding: 24px 32px;
       border: none;
       border-radius: 20px;
       color: white;
       font-weight: bold;
     }
-
-    #connect {
-      background: #2563eb;
-    }
-
-    .buttons {
-      display: flex;
-      gap: 20px;
-    }
-
-    #on {
-      background: #16a34a;
-    }
-
-    #off {
-      background: #dc2626;
-    }
+    #connect { background: #2563eb; }
+    .buttons { display: flex; gap: 20px; }
+    #on { background: #16a34a; }
+    #off { background: #dc2626; }
   </style>
 </head>
 <body>
@@ -69,30 +47,30 @@
   </div>
 
   <script>
-    let bluetoothDevice;
     let bluetoothCharacteristic;
 
-    const SERVICE_UUID = 0xFFE0;
-    const CHARACTERISTIC_UUID = 0xFFE1;
+    const SERVICE_UUID = '0000ffe0-0000-1000-8000-00805f9b34fb';
+    const CHARACTERISTIC_UUID = '0000ffe1-0000-1000-8000-00805f9b34fb';
 
     async function connectBluetooth() {
       try {
-        document.getElementById("status").textContent = "Recherche Bluetooth...";
+        document.getElementById("status").textContent = "Recherche des appareils BLE...";
 
-        bluetoothDevice = await navigator.bluetooth.requestDevice({
-          filters: [{ namePrefix: "BT05" }],
+        const device = await navigator.bluetooth.requestDevice({
+          acceptAllDevices: true,
           optionalServices: [SERVICE_UUID]
         });
 
-        document.getElementById("status").textContent = "Connexion à " + bluetoothDevice.name + "...";
+        document.getElementById("status").textContent = "Connexion à " + (device.name || "appareil BLE") + "...";
 
-        const server = await bluetoothDevice.gatt.connect();
+        const server = await device.gatt.connect();
         const service = await server.getPrimaryService(SERVICE_UUID);
         bluetoothCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
 
-        document.getElementById("status").textContent = "Connecté à " + bluetoothDevice.name;
+        document.getElementById("status").textContent = "Connecté à " + (device.name || "BT05");
       } catch (error) {
-        document.getElementById("status").textContent = "Erreur : " + error;
+        document.getElementById("status").textContent = "Erreur Bluetooth : " + error.message;
+        console.log(error);
       }
     }
 
@@ -102,21 +80,24 @@
         return;
       }
 
-      const encoder = new TextEncoder();
-      await bluetoothCharacteristic.writeValue(encoder.encode(command));
+      const data = new TextEncoder().encode(command);
 
-      document.getElementById("status").textContent = "Commande envoyée : " + command;
+      try {
+        await bluetoothCharacteristic.writeValue(data);
+        document.getElementById("status").textContent = "Commande envoyée : " + command;
+      } catch (e) {
+        try {
+          await bluetoothCharacteristic.writeValueWithoutResponse(data);
+          document.getElementById("status").textContent = "Commande envoyée : " + command;
+        } catch (err) {
+          document.getElementById("status").textContent = "Erreur envoi : " + err.message;
+        }
+      }
     }
 
     document.getElementById("connect").addEventListener("click", connectBluetooth);
-
-    document.getElementById("on").addEventListener("click", () => {
-      sendCommand("A");
-    });
-
-    document.getElementById("off").addEventListener("click", () => {
-      sendCommand("E");
-    });
+    document.getElementById("on").addEventListener("click", () => sendCommand("A"));
+    document.getElementById("off").addEventListener("click", () => sendCommand("E"));
   </script>
 
 </body>
